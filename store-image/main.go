@@ -50,8 +50,8 @@ func decodeBase64(base64img string) []byte {
 func UploadToS3(client *s3.Client, data RequestData) string {
 	content := decodeBase64(data.Image)
 	output, err := client.PutObject(context.TODO(), &s3.PutObjectInput{
-		Bucket:      aws.String(fmt.Sprintf("%s.png", data.BucketName)),
-		Key:         aws.String(data.ImageName),
+		Bucket:      aws.String(data.BucketName),
+		Key:         aws.String(fmt.Sprintf("%s.png", data.ImageName)),
 		Body:        bytes.NewReader(content),
 		ContentType: aws.String(http.DetectContentType(content)),
 	})
