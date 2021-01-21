@@ -35,10 +35,10 @@ Outputs:
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
   StoreImageAPI:
     Description: "API Gateway endpoint URL for Prod environment for StoreImageFunction"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/store-image/"
   StoreImageFunction:
     Description: "First Lambda Function ARN"
-    Value: !GetAtt HelloWorldFunction.Arn
+    Value: !GetAtt StoreImageFunction.Arn
   StoreImageFunctionIamRole:
     Description: "Implicit IAM Role created for StoreImageFunction"
-    Value: !GetAtt HelloWorldFunctionRole.Arn
+    Value: !GetAtt StoreImageFunctionRole.Arn
