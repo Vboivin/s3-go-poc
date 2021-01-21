@@ -11,8 +11,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"net/http"
 	"os"
+	"strings"
 )
 
 type RequestData struct {
@@ -21,8 +23,13 @@ type RequestData struct {
 	BucketName string `json:"bucketName"`
 }
 
-var (
-	configError = "Error retrieving AWS credentials"
+type S3Output struct {
+	RequestOutput *s3.PutObjectOutput `json:"requestOutput"`
+	Link          string              `json:"link"`
+}
+
+const (
+	ConfigError = "Error retrieving AWS credentials"
 )
 
 func initializeAWS() aws.Config {
@@ -31,7 +38,7 @@ func initializeAWS() aws.Config {
 		config.WithSharedConfigProfile(os.Getenv("AWS_PROFILE")))
 
 	if err != nil {
-		panic(fmt.Sprintf("%s: %s\n", configError, err.Error()))
+		panic(fmt.Sprintf("%s: %s\n", ConfigError, err.Error()))
 	}
 
 	return cfg
@@ -47,37 +54,47 @@ func decodeBase64(base64img string) []byte {
 	return img
 }
 
-func UploadToS3(client *s3.Client, data RequestData) string {
-	content := decodeBase64(data.Image)
+func appendContentType(imgName string, content []byte) string {
+	return fmt.Sprintf("%s.%s",
+		imgName,
+		strings.Split(http.DetectContentType(content), "/")[1])
+}
+
+func UploadToS3(client *s3.Client, data RequestData, content []byte) *s3.PutObjectOutput {
 	output, err := client.PutObject(context.TODO(), &s3.PutObjectInput{
 		Bucket:      aws.String(data.BucketName),
-		Key:         aws.String(fmt.Sprintf("%s.png", data.ImageName)),
+		Key:         aws.String(appendContentType(data.ImageName, content)),
 		Body:        bytes.NewReader(content),
 		ContentType: aws.String(http.DetectContentType(content)),
+		ACL:         types.ObjectCannedACLPublicRead,
 	})
 
 	if err != nil {
 		panic(fmt.Sprintf("Error during upload: %s", err.Error()))
 	}
 
-	jsonOutput, err := json.Marshal(output)
-
-	if err != nil {
-		panic(fmt.Sprintf("Error while converting metadata to json: %s", err.Error()))
-	}
-
-	return string(jsonOutput)
+	return output
 }
 
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	cfg := initializeAWS()
 	s3Client := s3.NewFromConfig(cfg)
+
 	data := RequestData{}
 	json.Unmarshal([]byte(request.Body), &data)
-	requestOutput := UploadToS3(s3Client, data)
+	content := decodeBase64(data.Image)
+
+	output := UploadToS3(s3Client, data, content)
+	s3Output, _ := json.Marshal(S3Output{
+		output,
+		fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s",
+			data.BucketName,
+			os.Getenv("AWS_REGION"),
+			appendContentType(data.ImageName, content)),
+	})
 
 	return events.APIGatewayProxyResponse{
-		Body:       requestOutput,
+		Body:       string(s3Output),
 		StatusCode: 201,
 	}, nil
 }
