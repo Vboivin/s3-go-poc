@@ -1,4 +1,4 @@
-# s3-poc
+# s3-poc [![Go Report Card](https://goreportcard.com/badge/github.com/Vboivin/s3-go-poc)](https://goreportcard.com/report/github.com/Vboivin/s3-go-poc) 
 
 This is a sample template for s3-poc - Below is a brief explanation of what we have generated for you:
 
